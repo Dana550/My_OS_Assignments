@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-void list(char* path, int recursive, int filter_size, char* name_filter){
+void list(char* path,int filter_size, char* name_filter){
     DIR* dir = opendir(path);
     if (dir == NULL) {
         printf("ERROR\ninvalid directory path\n");
@@ -12,15 +12,15 @@ void list(char* path, int recursive, int filter_size, char* name_filter){
     }
     struct dirent* entry = NULL;
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_DIR) {
-            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+        if (entry->d_type == DT_DIR) {//if in director
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) { //if NOT curent or parent 
                 char subdir_path[300];
                 snprintf(subdir_path, sizeof(subdir_path), "%s/%s", path, entry->d_name);
                 if (strstr(entry->d_name, name_filter) == entry->d_name) {
                     printf("%s/%s\n", path, entry->d_name);
                 }
             }
-        } else if (entry->d_type == DT_REG) {
+        } else if (entry->d_type == DT_REG) { //if in regular
             if (filter_size == -1 || entry->d_reclen < filter_size) {
                 if (strstr(entry->d_name, name_filter) == entry->d_name) {
                     printf("%s/%s\n", path, entry->d_name);
@@ -59,18 +59,22 @@ int main(int argc, char** argv){
                     return 1;
                 }
             }
-            if (strcmp(argv[i], "recursive") == 0) {
+            if (strncmp(argv[i], "recursive",9) == 0) {
                 recursive = 1;
             }
-            if (strstr(argv[i], "size_smaller=") == argv[i]) {
+            if (strncmp(argv[i], "size_smaller=",13) == 0) {
                 filter_size = atoi(argv[i] + strlen("size_smaller="));
             }
-            if (strstr(argv[i], "name_starts_with=") == argv[i]) {
+            if (strncmp(argv[i], "name_starts_with=",17) == 0) {
                 strcpy(name_filter, argv[i] + strlen("name_starts_with="));
             }
         }
-         list(path, recursive, filter_size, name_filter);
-
+        if(recursive==0){
+        
+         list(path,filter_size, name_filter);
+	}
+	
+	
     } else {
         printf("ERROR\ntoo few arguments\n");
         return 1;
