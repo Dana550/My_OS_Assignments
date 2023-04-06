@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-void list(char* path, int filter_size, char* name_filter){
+void list(char* path, int recursive, int filter_size, char* name_filter){
     DIR* dir = opendir(path);
     if (dir == NULL) {
         printf("ERROR\ninvalid directory path\n");
@@ -34,42 +34,48 @@ void list(char* path, int filter_size, char* name_filter){
 
 int main(int argc, char** argv){
     char* path = NULL;
+    int recursive = 0;
     int filter_size = -1;
     char name_filter[256] = "";
 
-    if (argc >= 2) { //are enough arguments
+    if (argc >= 2) {
         if (strcmp(argv[1], "variant") == 0) {
             printf("45790\n");
             return 0;
         }
 
-        for (int i = 1; i < argc; i++) { 
-            if (strcmp(argv[i], "list") == 0) { //the argument calls list function
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "list") == 0) {
                 i++;
                 if (i >= argc) {
                     printf("ERROR\nmissing path argument\n");
                     return 1;
                 }
-                
-                if (strncmp(argv[i], "path=", 5) == 0) { //the argument starts with "path="
-                //the path will be the characters after 5
-                    path = argv[i] + 5; 
+                if (strncmp(argv[i], "path=", 5) == 0) {
+                    path = argv[i] + 5;
                 }
                 if (path == NULL) {
                     printf("ERROR\nmissing path argument\n");
                     return 1;
                 }
             }
+            if (strcmp(argv[i], "recursive") == 0) {
+                recursive = 1;
+            }
+            if (strstr(argv[i], "size_smaller=") == argv[i]) {
+                filter_size = atoi(argv[i] + strlen("size_smaller="));
+            }
+            if (strstr(argv[i], "name_starts_with=") == argv[i]) {
+                strcpy(name_filter, argv[i] + strlen("name_starts_with="));
+            }
+        }
+         list(path, recursive, filter_size, name_filter);
 
-    	    list(path, filter_size, name_filter);
-     }
-    
     } else {
         printf("ERROR\ntoo few arguments\n");
         return 1;
     }
 
- 
-
+   
     return 0;
 }
