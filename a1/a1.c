@@ -3,7 +3,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
+#include <fcntl.h>
+#include <unistd.h>
 
 void list(char* path,int filter_size, char* name_filter,int recursive)
 {
@@ -63,10 +64,6 @@ void list(char* path,int filter_size, char* name_filter,int recursive)
                 {
                     list(fullPath,filter_size, name_filter,recursive);
                 }
-
-                //}
-                //printf("%s\n", fullPath);
-
             }
         }
     }
@@ -74,47 +71,80 @@ void list(char* path,int filter_size, char* name_filter,int recursive)
 
 }
 
-/*
-void list_rec(char* path, int filter_size,char* name_filter)
+
+void parse(char* path)
 {
-    DIR* dir = opendir(path);
-    struct stat statbuf;
-    if (dir == NULL)
-    {
-        printf("ERROR\ninvalid directory path\n");
-        exit(1);
-    }
-    struct dirent* entry = NULL;
-    while(((entry=readdir(dir))!=NULL))
-    {
-        //checking curent and parent
-        if(strcmp(entry->d_name,".")!=0||strcmp(entry->d_name,"..")!=0)
-        {
-            char subdir_path[512];
-            printf("%s/%s\n",path,entry->d_name);
-            snprintf(subdir_path,512, "%s/%s\n", path, entry->d_name);
-            //if(stat(subdir_path,&stat_buf==-1)){
-            //printf("ERROR\nfailed to get information\n");
-            // }
-            if(lstat(subdir_path, &statbuf) == 0)
-            {
-                printf("%s\n",subdir_path);
-                if(S_ISDIR(statbuf.st_mode))
-                {
-                    list_rec(subdir_path,filter_size,name_filter);
-                }
-            }
-        }
-        //printf("%s/%s\n",path,entry->d_name);
-        //snprintf(subdir_path, sizeof(subdir_path), "%s/%s\n", path, entry->d_name);
-    }
-
-    closedir(dir);
-    //printf("SUCCESS\n");
-
-
+	int f=open(path,O_RDONLY);
+	if(f==-1)
+	{
+		printf("ERROR\ncould not open file\n");
+		return;
+	}
+	
+	lseek(f,-2,SEEK_END);
+	char magic[3];
+	read(f,magic,2);
+	magic[2]='\0';
+	if(strcmp(magic,"HP")!=0)
+	{
+		printf("ERROR\nwrong magic\n");
+		return;
+	}
+	
+	lseek(f,-4,SEEK_END);
+	
+	short int header_size;
+	read(f,&header_size,2);
+	lseek(f,-header_size,SEEK_END);
+	
+	unsigned char version;
+	read(f,&version,1);
+	if(version<120 || version>220)
+	{
+		printf("ERROR\nwrong version\n");
+		return;
+	}
+	
+	unsigned char no_of_sections;
+	read(f,&no_of_sections,1);
+	if(no_of_sections<7 || no_of_sections>20)
+	{
+		printf("ERROR\nwrong sect_nr\n");
+		return;
+	}
+	
+	short int sect_type;
+	for(int i=0;i<no_of_sections;i++)
+	{	
+		lseek(f,20,SEEK_CUR);
+		read(f,&sect_type,2);
+		if(sect_type!=12 && sect_type!=61 && sect_type!=49 && sect_type!=56 && sect_type!=63)
+		{
+			printf("ERROR\nwrong sect_types\n");
+			return;
+		}
+		lseek(f,8,SEEK_CUR);
+	}
+	
+	lseek(f,-header_size+2,SEEK_END);
+	printf("SUCCESS\n");
+	printf("version=%d\nnr_sections=%d\n",version,no_of_sections);
+	for(int i=0;i<no_of_sections;i++)
+	{	
+		char sect_name[21];
+		int sect_offset;
+		int sect_size;
+		read(f,sect_name,20);
+		sect_name[20]='\0';
+		read(f,&sect_type,2);
+		read(f,&sect_offset,4);
+		read(f,&sect_size,4);
+		printf("section%d: %s %d %d\n",i+1,sect_name,sect_type,sect_size);
+		
+	}
+	
+	close(f);
 }
-*/
 
 int main(int argc, char** argv)
 {
@@ -159,6 +189,16 @@ int main(int argc, char** argv)
        	}
 	if(strcmp(argv[1], "parse")==0)
 	{
+		for (int i = 2; i < argc; i++)
+            	{
+                    if (strncmp(argv[i], "path=", 5) == 0)
+                    {
+                        path = argv[i] + 5;
+                    }
+
+           	 }
+           	 parse(path);
+           	
 	
 	}
 	if(strcmp(argv[1], "extract")==0)
