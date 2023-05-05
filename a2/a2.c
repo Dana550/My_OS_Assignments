@@ -5,11 +5,27 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "a2_helper.h"
+#include <pthread.h>
+#include <pthread.h>
+
+pthread_mutex_t mutex;
+
+void* thread_func(void* arg)
+{
+    int thread_no = *(int*)arg;
+    info(BEGIN, 3, thread_no);
+    pthread_mutex_lock(&mutex);
+    info(END, 3, thread_no);
+    pthread_mutex_unlock(&mutex);
+    return NULL;
+}
 
 void process_hierarchy()
 {
     pid_t p2=-1, p3=-1, p4=-1,p5=-1, p6=-1, p7=-1, p8=-1;
-
+    pthread_t t3[5];
+    int thread_args[5] = {1, 2, 3, 4, 5};
+    
     p2 = fork();
     
     if(p2==-1){
@@ -49,7 +65,29 @@ void process_hierarchy()
     {
         info(BEGIN, 3, 0);
         info(END, 3, 0);
-        
+        pthread_mutex_init(&mutex, NULL);
+        for(int i = 0; i < 5; i++)
+        {
+            if(i == 0)
+            {
+                pthread_create(&t3[i], NULL, thread_func, &thread_args[i]);
+            }
+            else if(i == 2)
+            {
+                pthread_create(&t3[i], NULL, thread_func, &thread_args[i]);
+                pthread_join(t3[0], NULL);
+            }
+            else
+            {
+                pthread_create(&t3[i], NULL, thread_func, &thread_args[i]);
+            }
+        }
+        pthread_join(t3[0], NULL);
+        pthread_join(t3[1], NULL);
+        pthread_join(t3[2], NULL);
+        pthread_join(t3[3], NULL);
+        pthread_join(t3[4], NULL);
+        pthread_mutex_destroy(&mutex);
         exit(0);
     }
     wait(NULL); //P3
