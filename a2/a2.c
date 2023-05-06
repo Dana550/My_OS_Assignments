@@ -7,8 +7,8 @@
 #include "a2_helper.h"
 #include <pthread.h>
 #include <pthread.h>
-
-
+#include <semaphore.h>
+/*
 pthread_mutex_t mutex_t3;
 void* thread_func(void* arg)
 {
@@ -36,6 +36,40 @@ void* thread_func(void* arg)
     
     return NULL;
 }
+*/
+pthread_mutex_t mutex_t3;
+sem_t sem_t3;
+
+void* thread_func(void* arg)
+{
+    int thread_no = *(int*)arg;
+    info(BEGIN, 3, thread_no);
+    
+    if (thread_no == 1)
+    {
+        pthread_mutex_lock(&mutex_t3);
+        info(END, 3, thread_no);
+        pthread_mutex_unlock(&mutex_t3);
+    }
+    else if (thread_no == 3)
+    {
+        sem_wait(&sem_t3);
+        pthread_mutex_lock(&mutex_t3);
+        pthread_mutex_unlock(&mutex_t3);
+        info(END, 3, thread_no);
+    }
+    else
+    {
+        sem_wait(&sem_t3);
+        pthread_mutex_lock(&mutex_t3);
+        pthread_mutex_unlock(&mutex_t3);
+        info(END, 3, thread_no);
+    }
+    
+    sem_post(&sem_t3); // signal that the thread has finished
+    return NULL;
+}
+
 
 
 void process_hierarchy()
@@ -85,11 +119,11 @@ void process_hierarchy()
         
          
         pthread_mutex_init(&mutex_t3, NULL);
-        pthread_create(&t3[2], NULL, thread_func, &thread_args[2]); // T3.3
-        pthread_create(&t3[0], NULL, thread_func, &thread_args[0]); // T3.1
+        pthread_create(&t3[0], NULL, thread_func, &thread_args[2]); // T3.3
+        pthread_create(&t3[2], NULL, thread_func, &thread_args[0]); // T3.1
         
-        pthread_join(t3[0], NULL);
         pthread_join(t3[2], NULL);
+        pthread_join(t3[0], NULL);
 
         pthread_create(&t3[1], NULL, thread_func, &thread_args[1]);
         pthread_create(&t3[3], NULL, thread_func, &thread_args[3]);
@@ -101,6 +135,8 @@ void process_hierarchy()
         pthread_join(t3[4], NULL);
         
         pthread_mutex_destroy(&mutex_t3);
+    
+        
         info(END, 3, 0);
         exit(0);
     }
