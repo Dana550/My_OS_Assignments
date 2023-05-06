@@ -8,8 +8,8 @@
 #include <pthread.h>
 #include <pthread.h>
 
-
 pthread_mutex_t mutex_t3;
+
 void* thread_func(void* arg)
 {
     int thread_no = *(int*)arg;
@@ -36,12 +36,10 @@ void* thread_func(void* arg)
     
     return NULL;
 }
-
-
 void process_hierarchy()
 {
     pid_t p2=-1, p3=-1, p4=-1,p5=-1, p6=-1, p7=-1, p8=-1;
-   pthread_t t3[5];
+    pthread_t t3[5];
     int thread_args[5] = {1, 2, 3, 4, 5};
     
     p2 = fork();
@@ -82,13 +80,12 @@ void process_hierarchy()
     if(p3 == 0) 
     {
         info(BEGIN, 3, 0);
-        
-         
+ 
         pthread_mutex_init(&mutex_t3, NULL);
-        pthread_create(&t3[2], NULL, thread_func, &thread_args[2]); // T3.3
         pthread_create(&t3[0], NULL, thread_func, &thread_args[0]); // T3.1
-        
         pthread_join(t3[0], NULL);
+        
+        pthread_create(&t3[2], NULL, thread_func, &thread_args[2]); // T3.3
         pthread_join(t3[2], NULL);
 
         pthread_create(&t3[1], NULL, thread_func, &thread_args[1]);
@@ -96,7 +93,6 @@ void process_hierarchy()
         pthread_create(&t3[4], NULL, thread_func, &thread_args[4]);
         
         pthread_join(t3[1], NULL);
-        pthread_join(t3[2], NULL);
         pthread_join(t3[3], NULL);
         pthread_join(t3[4], NULL);
         
