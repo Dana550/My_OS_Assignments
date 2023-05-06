@@ -8,15 +8,20 @@
 #include <pthread.h>
 #include <pthread.h>
 
-pthread_mutex_t mutex;
-
 void* thread_func(void* arg)
 {
     int thread_no = *(int*)arg;
     info(BEGIN, 3, thread_no);
+    
+    pthread_mutex_t mutex;
+    pthread_mutex_init(&mutex, NULL);
+    
     pthread_mutex_lock(&mutex);
     info(END, 3, thread_no);
     pthread_mutex_unlock(&mutex);
+    
+    pthread_mutex_destroy(&mutex);
+    
     return NULL;
 }
 
@@ -64,8 +69,10 @@ void process_hierarchy()
     if(p3 == 0) 
     {
         info(BEGIN, 3, 0);
-        info(END, 3, 0);
+                
+        pthread_mutex_t mutex;
         pthread_mutex_init(&mutex, NULL);
+        
         for(int i = 0; i < 5; i++)
         {
             if(i == 0)
@@ -82,12 +89,15 @@ void process_hierarchy()
                 pthread_create(&t3[i], NULL, thread_func, &thread_args[i]);
             }
         }
+
         pthread_join(t3[0], NULL);
         pthread_join(t3[1], NULL);
         pthread_join(t3[2], NULL);
         pthread_join(t3[3], NULL);
         pthread_join(t3[4], NULL);
         pthread_mutex_destroy(&mutex);
+        
+        info(END, 3, 0);
         exit(0);
     }
     wait(NULL); //P3
