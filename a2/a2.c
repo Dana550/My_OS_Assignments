@@ -6,8 +6,8 @@
 #include <sys/wait.h>
 #include "a2_helper.h"
 #include <pthread.h>
-#include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>
 /*
 pthread_mutex_t mutex_t3;
 void* thread_func(void* arg)
@@ -37,6 +37,15 @@ void* thread_func(void* arg)
     return NULL;
 }
 */
+
+
+typedef struct {
+    int id_procc;
+    int id_thread;
+    sem_t *sync;
+} TH_STRUCT;
+
+
 pthread_mutex_t mutex_t3;
 sem_t sem_t3;
 
@@ -44,6 +53,8 @@ void* thread_func(void* arg)
 {
     int thread_no = *(int*)arg;
     info(BEGIN, 3, thread_no);
+    
+    
     
     if (thread_no == 1)
     {
@@ -71,13 +82,35 @@ void* thread_func(void* arg)
 }
 
 
+void* thread_func8(void* arg)
+{
+
+    TH_STRUCT *s = (TH_STRUCT*)arg;
+    sem_wait(s->sync);
+    info(BEGIN, 8, s->id_thread);
+    info(END, 8, s->id_thread);
+    sem_post(s->sync);
+    return NULL;
+}
+
+
+void* thread_func7(void* arg)
+{
+
+    TH_STRUCT *s = (TH_STRUCT*)arg;
+    info(BEGIN, 7, s->id_thread);
+            info(END, 7, s->id_thread);
+    return NULL;
+}
 
 void process_hierarchy()
 {
     pid_t p2=-1, p3=-1, p4=-1,p5=-1, p6=-1, p7=-1, p8=-1;
    pthread_t t3[5];
     int thread_args[5] = {1, 2, 3, 4, 5};
+    sem_t *s1,*s2,*s3,*s4,*s5,*s6,*s7;
     
+    s1=sem_open("/sem1",O_CREAT,0644,0);
     p2 = fork();
     
     if(p2==-1){
@@ -89,25 +122,26 @@ void process_hierarchy()
     {   
     	//begin info 
     	info(BEGIN, 2, 0);
-    	
+    	s7=sem_open("/sem7",O_CREAT,0644,0);
         p6 = fork();//child process p6
         if(p6 == 0)
         {
             info(BEGIN, 6, 0);
             info(END, 6, 0);
-            
+            sem_post(s7);
             exit(0);
         }
-        wait(NULL); //P6
+        sem_wait(s7);
+        sem_unlink("/sem7");
         //end info
         info(END, 2, 0);
+        sem_post(s1);
         
         exit(0);
     }
-    //wait after every process:
-    wait(NULL); //P2
-    
-    
+   
+  
+    s2=sem_open("/sem2",O_CREAT,0644,0);
     p3 = fork();
     if(p3==-1){
         perror("Could not create process p3");
@@ -135,13 +169,13 @@ void process_hierarchy()
         pthread_join(t3[4], NULL);
         
         pthread_mutex_destroy(&mutex_t3);
-    
         
         info(END, 3, 0);
+        sem_post(s2);
         exit(0);
     }
-    wait(NULL); //P3
-    
+   
+    s3=sem_open("/sem3",O_CREAT,0644,0);
     p4 = fork();
      if(p4==-1){
         perror("Could not create process p4");
@@ -151,11 +185,11 @@ void process_hierarchy()
     { 
         info(BEGIN, 4, 0);
         info(END, 4, 0);
-        
+        sem_post(s3);
         exit(0);
     }
-    wait(NULL); //P4
     
+    s4=sem_open("/sem4",O_CREAT,0644,0);
     p5 = fork();
      if(p5==-1){
         perror("Could not create process p5");
@@ -164,7 +198,8 @@ void process_hierarchy()
     if(p5 == 0) 
     {
         info(BEGIN, 5, 0);
-        
+        s5=sem_open("/sem5",O_CREAT,0644,0);
+            
         p8 = fork();
         if(p8==-1){
              perror("Could not create process p8");
@@ -173,16 +208,38 @@ void process_hierarchy()
         if(p8 == 0)
         {
             info(BEGIN, 8, 0);
+            pthread_t tid[47];
+    	    TH_STRUCT params[47];
+    	    
+    	    sem_t sem;
+    	    sem_init(&sem,0,6);
+    	    
+    	     for(int i=0; i<47; i++){
+        	params[i].id_procc = 8;
+        	params[i].id_thread = i+1;
+        	params[i].sync=&sem;
+        	pthread_create(&tid[i], NULL, thread_func8, &params[i]);
+       	     }
+
+  
+       	     for(int i=0; i<47; i++){
+                   pthread_join(tid[i], NULL);
+        
+             } 
+    
             info(END, 8, 0);
+            sem_post(s5);
             exit(0);
         }
-        wait(NULL); //P8
         
+        sem_wait(s5);
+        sem_unlink("/sem5");
         info(END, 5, 0);
+        sem_post(s4);
         exit(0);
     }
-    wait(NULL); //P5
-    
+   
+    s6=sem_open("/sem6",O_CREAT,0644,0);
     p7 = fork();
     if(p7==-1){
         perror("Could not create process p7");
@@ -191,11 +248,34 @@ void process_hierarchy()
     if(p7 == 0)
     { 
         info(BEGIN, 7, 0);
+        pthread_t tid[4];
+    	    TH_STRUCT params[4];
+    	    
+    	     for(int i=0; i<4; i++){
+        	params[i].id_procc = 7;
+        	params[i].id_thread = i+1;
+        	pthread_create(&tid[i], NULL, thread_func7, &params[i]);
+       	     }
+
+  
+       for(int i=0; i<4; i++){
+            pthread_join(tid[i], NULL);
+        
+        }
         info(END, 7, 0);
+        sem_post(s6);
         exit(0);
     }
-    wait(NULL); //P7
-   
+    sem_wait(s1);
+    sem_wait(s2);
+    sem_wait(s3);
+    sem_wait(s4);
+    sem_wait(s6);
+    sem_unlink("/sem1");
+    sem_unlink("/sem2");
+    sem_unlink("/sem3");
+    sem_unlink("/sem4");
+    sem_unlink("/sem6");
 }
 
 int main()
