@@ -39,6 +39,40 @@ int main() {
     write(respPipe,string,length);    
     printf("SUCCESS\n");
 
+    char* read_from = NULL;
+
+    while (1) {
+        //receive request
+         unsigned int a = 0;
+        read(reqPipe,&a,1);
+        read_from=(char*)malloc(a * sizeof(char));
+        read(reqPipe,read_from,a);
+        read_from[a]='\0';
+
+        if(strcmp(read_from,"EXIT") == 0)
+        {
+            
+            close(reqPipe);
+            close(respPipe);
+            unlink(RESP_PIPE_NAME);
+            break;
+        }
+
+        if(strcmp(read_from,"PING") == 0)
+        {
+            char ping_pong[7]="PING";
+            unsigned int length=strlen(ping_pong);
+          
+            write(respPipe,&length,1);
+            write(respPipe,ping_pong,length);
+            write(respPipe,&length,1);
+            write(respPipe,"PONG",length);
+            unsigned int variant = 45790;
+            write(respPipe,&variant,4);
+            break;
+        }
+    }
+
     unlink(REQ_PIPE_NAME);
     unlink(RESP_PIPE_NAME);
  
