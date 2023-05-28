@@ -144,7 +144,7 @@ int main() {
 
                 write(respPipe,&length2,1);
                 write(respPipe,error,5); 
-            } else
+            } 
             {
 
                         memcpy(&shmPr[offset], (void*)&value,4);
@@ -161,7 +161,76 @@ int main() {
                 
             }
 
-        }else{
+        }else if (strcmp(read_from, "MAP_FILE") == 0) {
+            char file_name[256];
+            read(reqPipe, file_name, 256);
+
+            int file_fd = open(file_name, O_RDONLY);
+            if (file_fd == -1) {
+                char map_file[20] = "MAP_FILE";
+                int length1 = strlen(map_file);
+                char error[20] = "ERROR";
+                int length2 = strlen(error);
+
+                write(respPipe, &length1, 1);
+                write(respPipe, map_file, length1);
+                write(respPipe, &length2, 1);
+                write(respPipe, error, length2);
+            } else {
+                off_t file_size = lseek(file_fd, 0, SEEK_END);
+                lseek(file_fd, 0, SEEK_SET);
+
+                shmFd = shm_open("/7moqaM", O_CREAT | O_RDWR, 0664);
+                if (shmFd < 0) {
+                    char map_file[20] = "MAP_FILE";
+                    int length1 = strlen(map_file);
+                    char error[20] = "ERROR";
+                    int length2 = strlen(error);
+
+                    write(respPipe, &length1, 1);
+                    write(respPipe, map_file, length1);
+                    write(respPipe, &length2, 1);
+                    write(respPipe, error, length2);
+                } else {
+                    // Adjust the size of the shared memory region
+                    ftruncate(shmFd, file_size);
+
+                    // Map the shared memory region into the virtual address space
+                    shmPr = (char*)mmap(NULL, file_size, PROT_READ, MAP_SHARED, shmFd, 0);
+                    if (shmPr == MAP_FAILED) {
+                        char map_file[20] = "MAP_FILE";
+                        int length1 = strlen(map_file);
+                        char error[20] = "ERROR";
+                        int length2 = strlen(error);
+
+                        write(respPipe, &length1, 1);
+                        write(respPipe, map_file, length1);
+                        write(respPipe, &length2, 1);
+                        write(respPipe, error, length2);
+                        shm_unlink("/7moqaM");
+                    } else {
+                        // Read the file into shared memory
+                        read(file_fd, shmPr, file_size);
+
+                        // Close the file descriptor
+                        close(file_fd);
+                        close(shmFd);
+
+                        char map_file[20] = "MAP_FILE";
+                        int length1 = strlen(map_file);
+                        char success[20] = "SUCCESS";
+                        int length2 = strlen(success);
+
+                        write(respPipe, &length1, 1);
+                        write(respPipe, map_file, length1);
+                        write(respPipe, &length2, 1);
+                        write(respPipe, success, length2);
+                    }
+                }
+            }
+
+        }   
+        else{
                 free(read_from);
 
             break;
