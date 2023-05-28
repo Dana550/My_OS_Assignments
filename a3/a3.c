@@ -39,14 +39,10 @@ int main() {
     printf("SUCCESS\n");
 
     char* read_from = NULL;
-
     int shmFd = -1;
- 
     char* shmPr= NULL;
 
-   // unsigned int number = 0;
-
-    while (1) {
+    for(;;){
         //receive request
         unsigned int a = 0;
         read(reqPipe, &a, 1);
@@ -55,12 +51,15 @@ int main() {
         read_from[a] = '\0';
 
         if (strcmp(read_from, "EXIT") == 0) {
+            munmap(shmPr, sizeof(char)*45790);
+            shmPr=NULL;
+            shm_unlink("/7moqaM");
             close(reqPipe);
             close(respPipe);
             unlink(RESP_PIPE_NAME);
             break;
         }
-
+        else
         if (strcmp(read_from, "PING") == 0) {
             char ping_pong[7] = "PING";
             unsigned int length = strlen(ping_pong);
@@ -71,9 +70,8 @@ int main() {
             write(respPipe, "PONG", length);
             unsigned int variant = 45790;
             write(respPipe, &variant, sizeof(variant));
-            break;
         }
-
+        else
         if (strcmp(read_from, "CREATE_SHM") == 0) {
             int size = 0;
             read(reqPipe, &size, sizeof(size));
@@ -123,33 +121,56 @@ int main() {
             write(respPipe,create,10);   
             write(respPipe,&length2,1);
             write(respPipe,error,7);
+            free(read_from);
         }
-        /*
+                //free(read_from);
+        else
+       // printf("intraaaaa");
         if (strcmp(read_from, "WRITE_TO_SHM") == 0) {
-            unsigned int offset = 0, value = 0;
+            //printf("intraaaaa");
+            unsigned offset = 0, value = 0;
+
             read(reqPipe, &offset, sizeof(offset));
             read(reqPipe, &value, sizeof(value));
 
-            if (offset >= 4673015 || offset + sizeof(value) > 4673015) {
-                char error[] = "WRITE_TO_SHM ERROR";
-                unsigned int errorLength = strlen(error);
-                write(respPipe, &errorLength, sizeof(errorLength));
-                write(respPipe, error, errorLength);
-            } else {
-                // Write value to the shared memory at the specified offset
-                unsigned int* shmOffsetPtr = (unsigned int*)((char*)shmPr + offset);
-                *shmOffsetPtr = value;
+            if (offset > 4673015 || offset <0 || offset+sizeof(value)>4673015) {
+                char create[20] = "WRITE_TO_SHM";
+                int length1=strlen(create);
+                char error[20] = "ERROR";
+                int length2=strlen(error);
 
-                char response[] = "WRITE_TO_SHM SUCCESS";
-                unsigned int responseLength = strlen(response);
-                write(respPipe, &responseLength, sizeof(responseLength));
-                write(respPipe, response, responseLength);
+                write(respPipe,&length1,1);
+                write(respPipe,create,12);   
+
+                write(respPipe,&length2,1);
+                write(respPipe,error,5); 
+            } else
+            {
+
+                        memcpy(&shmPr[offset], (void*)&value,4);
+                 
+                        char create[20] = "WRITE_TO_SHM";
+                        int length1=strlen(create);
+                        char error[20] = "SUCCESS";
+                        int length2=strlen(error);
+
+                        write(respPipe,&length1,1);
+                        write(respPipe,create,12);   
+                        write(respPipe,&length2,1);
+                        write(respPipe,error,7);
+                
             }
-        }*/
 
-        free(read_from); // Deallocate the memory
-        break;
+        }else{
+                free(read_from);
+
+            break;
+        }
+        
+        //free(read_from);
+        //break;        
     }
+    
     close(reqPipe);
     close(respPipe);
 
