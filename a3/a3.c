@@ -42,9 +42,9 @@ int main() {
 
     int shmFd = -1;
  
-    char* shPointer= NULL;
+    char* shmPr= NULL;
 
-    unsigned int number = 0;
+   // unsigned int number = 0;
 
     while (1) {
         //receive request
@@ -74,45 +74,87 @@ int main() {
             break;
         }
 
-        if (strcmp(read_from, "CREATE_SHM 4673015") == 0) {
-            read(reqPipe, &number, sizeof(number));
+        if (strcmp(read_from, "CREATE_SHM") == 0) {
+            int size = 0;
+            read(reqPipe, &size, sizeof(size));
 
             shmFd = shm_open("/7moqaM", O_CREAT | O_RDWR, 0664);
             if (shmFd < 0) {
-                char error[20] = "CREATE_SHM ERROR";
-                unsigned int length = strlen(error);
-                write(respPipe, &length, 1);
+                char create[20] = "CREATE_SHM";
+                int length1=strlen(create);
+                char error[20] = "ERROR";
+                int length2=strlen(error);
+
+                write(respPipe,&length1,1);
+                write(respPipe,create,10);   
+
+                write(respPipe,&length2,1);
+                write(respPipe,error,5);  
             }
 
-            //adjust the size of the shared memory region
-            ftruncate(shmFd, number);
+            // Adjust the size of the shared memory region
+            ftruncate(shmFd, size);
+           
+            // Map the shared memory region into the virtual address space
+            shmPr = (char*)mmap(NULL, size, PROT_READ | PROT_WRITE,MAP_SHARED,shmFd, 0);
+            if (shmPr == (void*)-1) {
+                char create[20] = "CREATE_SHM";
+                int length1=strlen(create);
+                char error[20] = "ERROR";
+                int length2=strlen(error);
 
-            shPointer = mmap(NULL, number, PROT_WRITE, MAP_SHARED, shmFd, 0);
+                write(respPipe,&length1,1);
+                write(respPipe,create,10);   
 
-            if ( shPointer== (void*)-1) {
-                char error[20] = "CREATE_SHM ERROR";
-                unsigned int length = strlen(error);
-                write(respPipe, &length, 1);
-                close(shmFd);
-                shm_unlink("/7moqaM");
-                return 1;
+                write(respPipe,&length2,1);
+                write(respPipe,error,5);
+                shm_unlink("/7moqaM");            
             }
 
+            // Close the file descriptor
+            close(shmFd);
 
-            char string[20] = "CREATE_SHM SUCCESS";
-            unsigned int length = strlen(string);
-            write(respPipe, &length, 1);
-            write(respPipe, string, length);
+            char create[20] = "CREATE_SHM";
+            int length1=strlen(create);
+            char error[20] = "SUCCESS";
+            int length2=strlen(error);
+
+            write(respPipe,&length1,1);
+            write(respPipe,create,10);   
+            write(respPipe,&length2,1);
+            write(respPipe,error,7);
         }
+        /*
+        if (strcmp(read_from, "WRITE_TO_SHM") == 0) {
+            unsigned int offset = 0, value = 0;
+            read(reqPipe, &offset, sizeof(offset));
+            read(reqPipe, &value, sizeof(value));
 
+            if (offset >= 4673015 || offset + sizeof(value) > 4673015) {
+                char error[] = "WRITE_TO_SHM ERROR";
+                unsigned int errorLength = strlen(error);
+                write(respPipe, &errorLength, sizeof(errorLength));
+                write(respPipe, error, errorLength);
+            } else {
+                // Write value to the shared memory at the specified offset
+                unsigned int* shmOffsetPtr = (unsigned int*)((char*)shmPr + offset);
+                *shmOffsetPtr = value;
+
+                char response[] = "WRITE_TO_SHM SUCCESS";
+                unsigned int responseLength = strlen(response);
+                write(respPipe, &responseLength, sizeof(responseLength));
+                write(respPipe, response, responseLength);
+            }
+        }*/
+
+        free(read_from); // Deallocate the memory
         break;
     }
-
     close(reqPipe);
     close(respPipe);
 
     unlink(REQ_PIPE_NAME);
     unlink(RESP_PIPE_NAME);
-
     return 0;
 }
+
